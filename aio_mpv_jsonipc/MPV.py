@@ -4,7 +4,7 @@ from asyncio import get_event_loop, open_unix_connection, create_subprocess_exec
 from asyncio.subprocess import DEVNULL
 from inspect import iscoroutine
 from os import path, unlink, chmod
-from json import dumps, loads
+import json
 from traceback import print_exc
 
 class ResponseEvent:
@@ -76,7 +76,10 @@ class MPV:
 
         while True:
             data = await self.reader.readline()
-            json_data = loads(data)
+            try:
+                json_data = json.loads(data)
+            except json.decoder.JSONDecodeError:
+                break
             logger.debug(json_data)
             if "request_id" in json_data and json_data["request_id"] in self.command_responses:
                 self.command_responses[json_data["request_id"]].set_response(json_data)
@@ -112,7 +115,7 @@ class MPV:
         async with self.command_lock:
             self.rid += 1
             self.command_responses[self.rid] = ResponseEvent()
-            data = dumps({
+            data = json.dumps({
                 "command": arguments,
                 "request_id": self.rid
             })+"\n"
