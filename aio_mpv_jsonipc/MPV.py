@@ -26,7 +26,14 @@ class MPVError(Exception):
         super(MPVError, self).__init__(*args, **kwargs)
 
 class MPV:
-    def __init__(self, media="", socket=None, mpv_path="/usr/bin/mpv", mpv_args=["--no-audio-display"]):
+    def __init__(
+            self,
+            media="",
+            socket=None,
+            mpv_path="/usr/bin/mpv",
+            mpv_args=["--no-audio-display"],
+            log_callback=None,
+            log_level="error"):
         """
         Create an MPV instance. if you specify a socket, this will not create a new instance and will instead connect to that one.
         If not it will start a new MPV instance according to the mpv_path argument and connect to it. Optionally you can specify a path or URL
@@ -45,6 +52,8 @@ class MPV:
         self.mpv_args = mpv_args
         self.socket = socket
         self.mpv_path = mpv_path
+        self.log_callback = log_callback
+        self.log_level = log_level
         self.reader, self.writer = None, None
         self.process = None
         self.event_queue = Queue()
@@ -179,8 +188,15 @@ class MPV:
         self.listen_for("property-change", self.on_property_change)
         self.listen_for("client-message", self.on_client_message)
 
+        if self.log_callback is not None and self.log_level is not None:
+            await self.command("request_log_messages", self.log_level)
+            self.listen_for("log-message", self.on_log_message)
+
         if self.process:
             self.loop.create_task(self._wait_destroy())
+
+    async def on_log_message(self, level, prefix, text):
+        await self.log_callback(level, prefix, text.strip())
 
     async def on_client_message(self, args):
         if len(args) == 2 and args[0] == "custom-bind":
