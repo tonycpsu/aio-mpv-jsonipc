@@ -140,7 +140,7 @@ class MPV:
     async def command(self, *args):
         result = await self.send(args)
         if result.get("error") != "success":
-            raise MPVError("mpv command returned error: %s" %(result.get("error")))
+            raise MPVError("mpv command returned error: %s" %(result))
 
         return result.get("data")
 
